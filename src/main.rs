@@ -1,12 +1,9 @@
 use bevy::prelude::*;
-
-fn hello_world() {
-    println!("Hello World!");
-}
+use urbanite::Urbanite;
 
 fn main() {
     App::new()
-        .add_startup_system(hello_world)
         .add_plugins(DefaultPlugins)
+        .add_plugin(Urbanite)
         .run();
 }
