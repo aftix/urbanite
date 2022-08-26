@@ -1,5 +1,5 @@
 use crate::{GameState, UiRoot};
-use bevy::prelude::*;
+use bevy::{app::AppExit, prelude::*};
 use iyes_loopless::prelude::*;
 
 // Marker component for MainMenu UI items
@@ -18,6 +18,14 @@ struct Previous(Entity);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ChangeEvent(Entity);
 
+// Enable a menu entity to quit
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+struct QuitTag;
+
+// Enable a menu entity to enter game
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+struct PlayTag;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct MainMenu;
 
@@ -32,6 +40,8 @@ impl Plugin for MainMenu {
                     .with_system(change_color)
                     .with_system(change_color_removed)
                     .with_system(move_selection)
+                    .with_system(selection_quit)
+                    .with_system(selection_play)
                     .into(),
             )
             .add_exit_system(GameState::MainMenu, menu_teardown);
@@ -56,6 +66,30 @@ fn move_selection(
         ev_writer.send(ChangeEvent(entity));
         keys.clear();
     }
+}
+
+fn selection_quit(
+    mut exit: EventWriter<AppExit>,
+    keys: Res<Input<KeyCode>>,
+    q: Query<(), (With<Selected>, With<QuitTag>)>,
+) {
+    q.for_each(move |_| {
+        if keys.just_pressed(KeyCode::Return) {
+            exit.send(AppExit);
+        }
+    });
+}
+
+fn selection_play(
+    mut commands: Commands,
+    keys: Res<Input<KeyCode>>,
+    q: Query<(), (With<Selected>, With<PlayTag>)>,
+) {
+    q.for_each(move |_| {
+        if keys.just_pressed(KeyCode::Return) {
+            commands.insert_resource(NextState(GameState::Game));
+        }
+    });
 }
 
 fn change_color(mut q: Query<(&mut Text, Added<Selected>)>) {
@@ -156,6 +190,7 @@ fn menu_startup(
         )
         .insert(MainMenuUi)
         .insert(Selected)
+        .insert(PlayTag)
         .id();
 
     let quit = commands
@@ -180,6 +215,7 @@ fn menu_startup(
                 ..default()
             }),
         )
+        .insert(QuitTag)
         .insert(MainMenuUi)
         .insert(Next(start))
         .insert(Previous(start))
@@ -193,8 +229,8 @@ fn menu_startup(
     commands.entity(uiroot).push_children(&[text, start, quit]);
 }
 
-fn menu_teardown(mut commands: Commands, q: Query<(Entity, &MainMenuUi)>) {
-    for (entity, _) in &q {
+fn menu_teardown(mut commands: Commands, q: Query<Entity, With<MainMenuUi>>) {
+    for entity in &q {
         commands.entity(entity).despawn_recursive();
     }
 }

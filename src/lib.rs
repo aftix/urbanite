@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use heron::prelude::*;
 use iyes_loopless::prelude::*;
 
+mod game;
 mod mainmenu;
 
 // Plugin for the entire game
@@ -12,6 +13,7 @@ pub struct Urbanite;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum GameState {
     MainMenu,
+    Game,
 }
 
 // Marker component for the Ui root node
@@ -23,7 +25,8 @@ impl Plugin for Urbanite {
         app.add_startup_system(setup)
             .add_plugin(PhysicsPlugin::default())
             .add_loopless_state(GameState::MainMenu)
-            .add_plugin(mainmenu::MainMenu);
+            .add_plugin(mainmenu::MainMenu)
+            .add_plugin(game::Game);
     }
 }
 
