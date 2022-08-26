@@ -30,6 +30,12 @@ impl Plugin for Urbanite {
     }
 }
 
+fn teardown<T: Component>(mut commands: Commands, q: Query<Entity, With<T>>) {
+    for entity in &q {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
 fn setup(mut commands: Commands, _asst_server: Res<AssetServer>) {
     commands.spawn_bundle(Camera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),

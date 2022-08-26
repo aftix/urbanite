@@ -18,19 +18,13 @@ impl Plugin for Game {
                     .with_system(return_on_esc)
                     .into(),
             )
-            .add_exit_system(GameState::Game, game_teardown);
+            .add_exit_system(GameState::Game, crate::teardown::<GameTag>);
     }
 }
 
 fn return_on_esc(mut commands: Commands, keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::Escape) {
         commands.insert_resource(NextState(GameState::MainMenu));
-    }
-}
-
-fn game_teardown(mut commands: Commands, q: Query<Entity, With<GameTag>>) {
-    for entity in &q {
-        commands.entity(entity).despawn_recursive();
     }
 }
 

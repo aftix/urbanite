@@ -44,7 +44,7 @@ impl Plugin for MainMenu {
                     .with_system(selection_play)
                     .into(),
             )
-            .add_exit_system(GameState::MainMenu, menu_teardown);
+            .add_exit_system(GameState::MainMenu, crate::teardown::<MainMenuUi>);
     }
 }
 
@@ -227,10 +227,4 @@ fn menu_startup(
         .insert(Previous(quit));
 
     commands.entity(uiroot).push_children(&[text, start, quit]);
-}
-
-fn menu_teardown(mut commands: Commands, q: Query<Entity, With<MainMenuUi>>) {
-    for entity in &q {
-        commands.entity(entity).despawn_recursive();
-    }
 }
