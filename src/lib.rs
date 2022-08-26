@@ -25,7 +25,7 @@ impl Plugin for Urbanite {
     }
 }
 
-fn setup(mut commands: Commands, asst_server: Res<AssetServer>) {
+fn setup(mut commands: Commands, _asst_server: Res<AssetServer>) {
     commands.spawn_bundle(Camera3dBundle::default());
     let mut camera2d = Camera2dBundle::default();
     camera2d.camera.priority = 2;
