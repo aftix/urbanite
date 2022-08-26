@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 bevy = "0.8.1"
 iyes_loopless = { git = "https://github.com/iyesgames/iyes_loopless" }
-heron = "4.0"
+heron = { git = "https://github.com/jcornaz/heron", features = ["3d"] }
 
 [profile.dev]
 opt-level = 1
