@@ -20,6 +20,10 @@ enum GameState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct UiRoot;
 
+// Ui font resource
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct UiFont(Handle<Font>);
+
 // Marker component for the player
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct PlayerTag;
@@ -40,7 +44,7 @@ fn teardown<T: Component>(mut commands: Commands, q: Query<Entity, With<T>>) {
     }
 }
 
-fn setup(mut commands: Commands, _asst_server: Res<AssetServer>) {
+fn setup(mut commands: Commands, asst_server: Res<AssetServer>) {
     commands
         .spawn_bundle(Camera3dBundle {
             transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -58,6 +62,10 @@ fn setup(mut commands: Commands, _asst_server: Res<AssetServer>) {
             ..default()
         })
         .insert(UiRoot);
+
+    commands.insert_resource(UiFont(
+        asst_server.load("fonts/mechanical-font/Mechanical-g5Y5.otf"),
+    ));
 }
 
 // Run the game

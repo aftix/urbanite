@@ -10,6 +10,9 @@ struct MainMenuTag;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct Selected;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+struct Cube;
+
 // Components for navigating the menu
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct Next(Entity);
@@ -42,6 +45,7 @@ impl Plugin for MainMenu {
                     .with_system(move_selection)
                     .with_system(selection_quit)
                     .with_system(selection_play)
+                    .with_system(rotate_cube)
                     .into(),
             )
             .add_exit_system(GameState::MainMenu, crate::teardown::<MainMenuTag>);
@@ -114,11 +118,18 @@ fn change_color_removed(
     }
 }
 
+fn rotate_cube(t: Res<Time>, mut q: Query<&mut Transform, With<Cube>>) {
+    let speed = 0.1;
+    let mut transform = q.single_mut();
+    let axis = transform.up();
+    transform.rotate_axis(axis, speed * std::f32::consts::TAU * t.delta_seconds());
+}
+
 fn menu_startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    asst_server: Res<AssetServer>,
+    uifont: Res<crate::UiFont>,
     q: Query<(Entity, &UiRoot)>,
 ) {
     commands
@@ -128,7 +139,9 @@ fn menu_startup(
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         })
-        .insert(MainMenuTag);
+        .insert(MainMenuTag)
+        .insert(Cube);
+
     commands
         .spawn_bundle(PointLightBundle {
             point_light: PointLight {
@@ -147,7 +160,7 @@ fn menu_startup(
                 "Urbanite",
                 TextStyle {
                     color: Color::WHITE,
-                    font: asst_server.load("fonts/mechanical-font/Mechanical-g5Y5.otf"),
+                    font: uifont.0.clone(),
                     font_size: 100.0,
                 },
             )
@@ -172,7 +185,7 @@ fn menu_startup(
                 "Generate World",
                 TextStyle {
                     color: Color::WHITE,
-                    font: asst_server.load("fonts/mechanical-font/Mechanical-g5Y5.otf"),
+                    font: uifont.0.clone(),
                     font_size: 24.0,
                 },
             )
@@ -199,7 +212,7 @@ fn menu_startup(
                 "Quit",
                 TextStyle {
                     color: Color::WHITE,
-                    font: asst_server.load("fonts/mechanical-font/Mechanical-g5Y5.otf"),
+                    font: uifont.0.clone(),
                     font_size: 24.0,
                 },
             )
