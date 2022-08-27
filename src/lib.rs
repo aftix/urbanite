@@ -20,6 +20,10 @@ enum GameState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct UiRoot;
 
+// Marker component for the player
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+struct PlayerTag;
+
 impl Plugin for Urbanite {
     fn build(&self, app: &mut App) {
         app.add_startup_system(setup)
@@ -37,10 +41,12 @@ fn teardown<T: Component>(mut commands: Commands, q: Query<Entity, With<T>>) {
 }
 
 fn setup(mut commands: Commands, _asst_server: Res<AssetServer>) {
-    commands.spawn_bundle(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands
+        .spawn_bundle(Camera3dBundle {
+            transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            ..default()
+        })
+        .insert(PlayerTag);
     commands
         .spawn_bundle(NodeBundle {
             style: Style {
