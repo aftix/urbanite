@@ -11,20 +11,20 @@ struct GameTag;
 struct Orbit;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Game;
+pub(crate) struct WorldGenerate;
 
-impl Plugin for Game {
+impl Plugin for WorldGenerate {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::Game, game_startup)
+        app.add_enter_system(GameState::WorldGenerate, game_startup)
             .add_system_set(
                 ConditionSet::new()
-                    .run_in_state(GameState::Game)
+                    .run_in_state(GameState::WorldGenerate)
                     .with_system(return_on_esc)
                     .with_system(movement)
                     .into(),
             )
-            .add_exit_system(GameState::Game, crate::teardown::<GameTag>)
-            .add_exit_system(GameState::Game, remove_orbit);
+            .add_exit_system(GameState::WorldGenerate, crate::teardown::<GameTag>)
+            .add_exit_system(GameState::WorldGenerate, remove_orbit);
     }
 }
 
@@ -74,12 +74,7 @@ fn game_startup(
 }
 
 // Orbit around the origin, keeping looking at the center, at constant radius
-fn movement(
-    mut commands: Commands,
-    t: Res<Time>,
-    keys: Res<Input<KeyCode>>,
-    mut q: Query<&mut Transform, With<Orbit>>,
-) {
+fn movement(t: Res<Time>, keys: Res<Input<KeyCode>>, mut q: Query<&mut Transform, With<Orbit>>) {
     let speed: f32 = 5f32;
 
     for mut transform in &mut q {

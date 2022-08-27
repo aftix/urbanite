@@ -4,7 +4,7 @@ use iyes_loopless::prelude::*;
 
 // Marker component for MainMenu UI items
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
-struct MainMenuUi;
+struct MainMenuTag;
 
 // Marker component for MainMenu selected item
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
@@ -44,7 +44,7 @@ impl Plugin for MainMenu {
                     .with_system(selection_play)
                     .into(),
             )
-            .add_exit_system(GameState::MainMenu, crate::teardown::<MainMenuUi>);
+            .add_exit_system(GameState::MainMenu, crate::teardown::<MainMenuTag>);
     }
 }
 
@@ -87,7 +87,7 @@ fn selection_play(
 ) {
     q.for_each(move |_| {
         if keys.just_pressed(KeyCode::Return) {
-            commands.insert_resource(NextState(GameState::Game));
+            commands.insert_resource(NextState(GameState::WorldGenerate));
         }
     });
 }
@@ -128,7 +128,7 @@ fn menu_startup(
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         })
-        .insert(MainMenuUi);
+        .insert(MainMenuTag);
     commands
         .spawn_bundle(PointLightBundle {
             point_light: PointLight {
@@ -139,7 +139,7 @@ fn menu_startup(
             transform: Transform::from_xyz(4.0, 8.0, 4.0),
             ..default()
         })
-        .insert(MainMenuUi);
+        .insert(MainMenuTag);
     let (uiroot, _) = q.single();
     let text = commands
         .spawn_bundle(
@@ -163,13 +163,13 @@ fn menu_startup(
                 ..default()
             }),
         )
-        .insert(MainMenuUi)
+        .insert(MainMenuTag)
         .id();
 
     let start = commands
         .spawn_bundle(
             TextBundle::from_section(
-                "Start",
+                "Generate World",
                 TextStyle {
                     color: Color::WHITE,
                     font: asst_server.load("fonts/mechanical-font/Mechanical-g5Y5.otf"),
@@ -188,7 +188,7 @@ fn menu_startup(
                 ..default()
             }),
         )
-        .insert(MainMenuUi)
+        .insert(MainMenuTag)
         .insert(Selected)
         .insert(PlayTag)
         .id();
@@ -216,7 +216,7 @@ fn menu_startup(
             }),
         )
         .insert(QuitTag)
-        .insert(MainMenuUi)
+        .insert(MainMenuTag)
         .insert(Next(start))
         .insert(Previous(start))
         .id();

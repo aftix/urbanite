@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use heron::prelude::*;
 use iyes_loopless::prelude::*;
 
-mod game;
+mod generate_world;
 mod mainmenu;
 
 // Plugin for the entire game
@@ -13,7 +13,7 @@ pub struct Urbanite;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum GameState {
     MainMenu,
-    Game,
+    WorldGenerate,
 }
 
 // Marker component for the Ui root node
@@ -30,7 +30,7 @@ impl Plugin for Urbanite {
             .add_plugin(PhysicsPlugin::default())
             .add_loopless_state(GameState::MainMenu)
             .add_plugin(mainmenu::MainMenu)
-            .add_plugin(game::Game);
+            .add_plugin(generate_world::WorldGenerate);
     }
 }
 
