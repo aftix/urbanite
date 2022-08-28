@@ -131,7 +131,11 @@ fn menu_startup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     uifont: Res<crate::UiFont>,
     q: Query<(Entity, &UiRoot)>,
+    mut camera_q: Query<&mut Transform, With<crate::PlayerTag>>,
 ) {
+    let mut transform = camera_q.single_mut();
+    *transform = Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Z);
+
     commands
         .spawn_bundle(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 2.0 })),

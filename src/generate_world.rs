@@ -1,5 +1,8 @@
 use crate::GameState;
-use bevy::prelude::*;
+use bevy::{
+    input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
+    prelude::*,
+};
 use iyes_loopless::prelude::*;
 
 // Tag for entities belonging to the game state
@@ -74,70 +77,63 @@ fn game_startup(
 }
 
 // Orbit around the origin, keeping looking at the center, at constant radius
-fn movement(t: Res<Time>, keys: Res<Input<KeyCode>>, mut q: Query<&mut Transform, With<Orbit>>) {
-    let speed: f32 = 5f32;
+fn movement(
+    t: Res<Time>,
+    mut motion_evr: EventReader<MouseMotion>,
+    mut scroll_evr: EventReader<MouseWheel>,
+    mut q: Query<&mut Transform, With<Orbit>>,
+) {
+    let speed = 5f32;
+    let rough_sensitity = 0.01f32;
+    let smooth_sensitivity = 0.1f32;
 
     for mut transform in &mut q {
-        if keys.pressed(KeyCode::W) {
-            let delta = transform.up() * t.delta_seconds() * speed;
-            let radius = transform.translation.length();
-            let dir = (transform.translation + delta).normalize();
+        for ev in motion_evr.iter() {
+            let delta_vertical = transform.up() * t.delta_seconds() * speed * ev.delta.y;
+            let delta_horizontal = transform.right() * t.delta_seconds() * speed * ev.delta.x;
 
-            let angle = delta.length() / (transform.translation + delta).length();
-            let new_up = Quat::from_axis_angle(transform.left(), angle).mul_vec3(transform.up());
+            let radius = transform.translation.length();
+
+            let angle_vertical =
+                delta_vertical.length() / (transform.translation + delta_vertical).length();
+
+            let new_up =
+                Quat::from_axis_angle(transform.left(), angle_vertical).mul_vec3(transform.up());
+
+            let dir = (transform.translation + delta_horizontal + delta_vertical).normalize();
 
             *transform = Transform::from_translation(dir * radius).looking_at(Vec3::ZERO, new_up);
         }
 
-        if keys.pressed(KeyCode::S) {
-            let delta = transform.down() * t.delta_seconds() * speed;
-            let radius = transform.translation.length();
-            let dir = (transform.translation + delta).normalize();
-
-            let angle = delta.length() / (transform.translation + delta).length();
-            let new_up = Quat::from_axis_angle(transform.right(), angle).mul_vec3(transform.up());
-
-            *transform = Transform::from_translation(dir * radius).looking_at(Vec3::ZERO, new_up);
-        }
-
-        if keys.pressed(KeyCode::A) {
-            let delta = transform.left() * t.delta_seconds() * speed;
-            let radius = transform.translation.length();
-            let dir = (transform.translation + delta).normalize();
-
-            *transform =
-                Transform::from_translation(dir * radius).looking_at(Vec3::ZERO, transform.up());
-        }
-
-        if keys.pressed(KeyCode::D) {
-            let delta = transform.right() * t.delta_seconds() * speed;
-            let radius = transform.translation.length();
-            let dir = (transform.translation + delta).normalize();
-
-            *transform =
-                Transform::from_translation(dir * radius).looking_at(Vec3::ZERO, transform.up());
-        }
-
-        if keys.pressed(KeyCode::Z) {
+        for ev in scroll_evr.iter() {
             let radius = transform.translation.length();
 
-            if radius >= 6.5 {
-                let new_radius = radius - t.delta_seconds() * speed * 2f32;
-                *transform =
-                    Transform::from_translation(transform.translation.normalize() * new_radius)
-                        .looking_at(Vec3::ZERO, transform.up());
-            }
-        }
+            let new_radius = if radius >= 6.5 && ev.y > 0.0 {
+                match ev.unit {
+                    MouseScrollUnit::Line => {
+                        radius - t.delta_seconds() * speed * rough_sensitity * ev.y
+                    }
+                    MouseScrollUnit::Pixel => {
+                        radius - t.delta_seconds() * speed * smooth_sensitivity * ev.y
+                    }
+                }
+            } else if radius <= 20.0 && ev.y < 0.0 {
+                match ev.unit {
+                    MouseScrollUnit::Line => {
+                        radius - t.delta_seconds() * speed * rough_sensitity * ev.y
+                    }
+                    MouseScrollUnit::Pixel => {
+                        radius - t.delta_seconds() * speed * smooth_sensitivity * ev.y
+                    }
+                }
+            } else {
+                radius
+            };
 
-        if keys.pressed(KeyCode::X) {
-            let radius = transform.translation.length();
-
-            if radius <= 20.0 {
-                let new_radius = radius + t.delta_seconds() * speed * 2f32;
-                *transform =
-                    Transform::from_translation(transform.translation.normalize() * new_radius)
-                        .looking_at(Vec3::ZERO, transform.up());
-            }
+            *transform = Transform::from_translation(
+                transform.translation.normalize() * new_radius.clamp(6.5, 20.0),
+            )
+            .looking_at(Vec3::ZERO, transform.up());
         }
     }
 }
