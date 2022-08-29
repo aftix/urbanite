@@ -124,16 +124,7 @@ fn movement(
         for ev in scroll_evr.iter() {
             let radius = transform.translation.length();
 
-            let new_radius = if radius >= 6.5 && ev.y > 0.0 {
-                match ev.unit {
-                    MouseScrollUnit::Line => {
-                        radius - t.delta_seconds() * speed * rough_sensitity * ev.y
-                    }
-                    MouseScrollUnit::Pixel => {
-                        radius - t.delta_seconds() * speed * smooth_sensitivity * ev.y
-                    }
-                }
-            } else if radius <= 20.0 && ev.y < 0.0 {
+            let new_radius = if (6.5..20.0).contains(&radius) {
                 match ev.unit {
                     MouseScrollUnit::Line => {
                         radius - t.delta_seconds() * speed * rough_sensitity * ev.y
