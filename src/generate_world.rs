@@ -79,14 +79,14 @@ fn game_startup(
 }
 
 fn grab_cursor(mut windows: ResMut<Windows>) {
-    let mut window = windows.get_primary_mut().expect("No primary window");
+    let window = windows.get_primary_mut().expect("No primary window");
 
     window.set_cursor_lock_mode(true);
     window.set_cursor_visibility(false);
 }
 
 fn release_cursor(mut windows: ResMut<Windows>) {
-    let mut window = windows.get_primary_mut().expect("No primary window");
+    let window = windows.get_primary_mut().expect("No primary window");
 
     window.set_cursor_lock_mode(false);
     window.set_cursor_visibility(true);
