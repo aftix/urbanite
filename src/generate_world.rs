@@ -19,6 +19,7 @@ pub(crate) struct WorldGenerate;
 impl Plugin for WorldGenerate {
     fn build(&self, app: &mut App) {
         app.add_enter_system(GameState::WorldGenerate, game_startup)
+            .add_enter_system(GameState::WorldGenerate, grab_cursor)
             .add_system_set(
                 ConditionSet::new()
                     .run_in_state(GameState::WorldGenerate)
@@ -27,6 +28,7 @@ impl Plugin for WorldGenerate {
                     .into(),
             )
             .add_exit_system(GameState::WorldGenerate, crate::teardown::<GameTag>)
+            .add_exit_system(GameState::WorldGenerate, release_cursor)
             .add_exit_system(GameState::WorldGenerate, remove_orbit);
     }
 }
@@ -74,6 +76,20 @@ fn game_startup(
 
     // Set camera transform to be with Z in the up direction, looking at sphere
     *player_transform = Transform::from_xyz(10.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Z);
+}
+
+fn grab_cursor(mut windows: ResMut<Windows>) {
+    let mut window = windows.get_primary_mut().expect("No primary window");
+
+    window.set_cursor_lock_mode(true);
+    window.set_cursor_visibility(false);
+}
+
+fn release_cursor(mut windows: ResMut<Windows>) {
+    let mut window = windows.get_primary_mut().expect("No primary window");
+
+    window.set_cursor_lock_mode(false);
+    window.set_cursor_visibility(true);
 }
 
 // Orbit around the origin, keeping looking at the center, at constant radius
