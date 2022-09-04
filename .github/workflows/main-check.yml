@@ -6,9 +6,55 @@ on:
     branches: [master]
 
 jobs:
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+      
+      - uses: Swatinem/rust-cache@v1
+
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y libasound2-dev libudev-dev
+
+      - name: Compile
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+  compile-release:
+    name: Compile Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+      
+      - uses: Swatinem/rust-cache@v1
+
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y libasound2-dev libudev-dev
+
+      - name: Compile
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    rus-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
