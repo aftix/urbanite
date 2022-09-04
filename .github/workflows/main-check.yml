@@ -54,7 +54,7 @@ jobs:
           args: --release
   clippy:
     name: Clippy
-    rus-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
