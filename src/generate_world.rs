@@ -5,6 +5,14 @@ use bevy::{
 };
 use iyes_loopless::prelude::*;
 
+use self::{
+    generation::{SimplexGenerator, WorldGenerator},
+    shader::GenerationMaterial,
+};
+
+const RADIUS: f32 = 3.0;
+const SIZE: u32 = 6000;
+
 mod generation;
 mod shader;
 
@@ -47,16 +55,21 @@ fn game_startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<shader::GenerationMaterial>>,
+    imgs: ResMut<Assets<Image>>,
     mut q: Query<(Entity, &mut Transform), With<crate::PlayerTag>>,
 ) {
     // Spawn sphere
+    let mut material: GenerationMaterial = Color::rgb(0.4, 0.1, 0.8).into();
+    let gen = SimplexGenerator::new(SIZE, 2 * SIZE);
+    material.elevation_texture = Some(gen.get_elevation_map(imgs));
+
     commands
         .spawn_bundle(MaterialMeshBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
                 radius: 3.0,
                 subdivisions: 32,
             })),
-            material: materials.add(Color::rgb(0.4, 0.1, 0.8).into()),
+            material: materials.add(material),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()
         })
@@ -71,6 +84,16 @@ fn game_startup(
                 ..default()
             },
             transform: Transform::from_xyz(4.0, 8.0, 4.0),
+            ..default()
+        })
+        .insert(GameTag);
+    commands
+        .spawn_bundle(DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                shadows_enabled: true,
+                ..default()
+            },
+            transform: Transform::from_xyz(4.0, 8.9, 4.9).looking_at(Vec3::ZERO, Vec3::Z),
             ..default()
         })
         .insert(GameTag);

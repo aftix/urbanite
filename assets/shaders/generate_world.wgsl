@@ -43,8 +43,15 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     var model = mesh.model;
     out.world_normal = mesh_normal_local_to_world(vertex.normal);
 #endif
-    // TODO: change elevation before changing to world coords
-    out.world_position = mesh_position_local_to_world(model, vec4<f32>(vertex.position, 1.0));
+
+    let r = sqrt(vertex.position.x*vertex.position.x + vertex.position.y * vertex.position.y + vertex.position.z*vertex.position.z);
+    let phi = acos(vertex.position.z / r);
+    let theta = atan2(vertex.position.y, vertex.position.x);
+
+    let new_r = r + textureSampleLevel(elevation_map, elevation_sampler, vec2(phi / 6.283185, theta / 3.1415926 + 0.5), 0.0).r;
+    
+    let position = vec3(new_r * sin(phi) * cos(theta), new_r * sin(theta) * sin(phi), new_r * cos(phi));
+    out.world_position = mesh_position_local_to_world(model, vec4<f32>(position, 1.0));
 #ifdef VERTEX_UVS
     out.uv = vertex.uv;
 #endif

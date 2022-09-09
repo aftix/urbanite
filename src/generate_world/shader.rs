@@ -156,7 +156,7 @@ impl Default for GenerationMaterial {
             alpha_mode: AlphaMode::Opaque,
             depth_bias: 0.0,
             elevation_texture: None,
-            quantizer: 100.0,
+            quantizer: 1000.0,
         }
     }
 }
@@ -257,6 +257,10 @@ impl Material for GenerationMaterial {
     fn fragment_shader() -> ShaderRef {
         // PBR_SHADER_HANDLE.typed().into()
         "shaders/celshading.wgsl".into()
+    }
+
+    fn vertex_shader() -> ShaderRef {
+        "shaders/generate_world.wgsl".into()
     }
 
     #[inline]
