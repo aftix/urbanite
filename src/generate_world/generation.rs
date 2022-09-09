@@ -75,7 +75,7 @@ impl SimplexGenerator {
             out.extend_from_slice(&f.to_le_bytes());
         }
 
-        return out;
+        out
     }
 }
 
