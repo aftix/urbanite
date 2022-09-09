@@ -5,6 +5,9 @@ use bevy::{
 };
 use iyes_loopless::prelude::*;
 
+mod generation;
+mod shader;
+
 // Tag for entities belonging to the game state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct GameTag;
@@ -18,7 +21,8 @@ pub(crate) struct WorldGenerate;
 
 impl Plugin for WorldGenerate {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::WorldGenerate, game_startup)
+        app.add_plugin(MaterialPlugin::<shader::GenerationMaterial>::default())
+            .add_enter_system(GameState::WorldGenerate, game_startup)
             .add_enter_system(GameState::WorldGenerate, grab_cursor)
             .add_system_set(
                 ConditionSet::new()
@@ -42,15 +46,15 @@ fn return_on_esc(mut commands: Commands, keys: Res<Input<KeyCode>>) {
 fn game_startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<shader::GenerationMaterial>>,
     mut q: Query<(Entity, &mut Transform), With<crate::PlayerTag>>,
 ) {
     // Spawn sphere
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn_bundle(MaterialMeshBundle {
             mesh: meshes.add(Mesh::from(shape::Icosphere {
                 radius: 3.0,
-                ..default()
+                subdivisions: 32,
             })),
             material: materials.add(Color::rgb(0.4, 0.1, 0.8).into()),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
@@ -124,17 +128,13 @@ fn movement(
         for ev in scroll_evr.iter() {
             let radius = transform.translation.length();
 
-            let new_radius = if (6.5..20.0).contains(&radius) {
-                match ev.unit {
-                    MouseScrollUnit::Line => {
-                        radius - t.delta_seconds() * speed * rough_sensitity * ev.y
-                    }
-                    MouseScrollUnit::Pixel => {
-                        radius - t.delta_seconds() * speed * smooth_sensitivity * ev.y
-                    }
+            let new_radius = match ev.unit {
+                MouseScrollUnit::Line => {
+                    radius - t.delta_seconds() * speed * rough_sensitity * ev.y
                 }
-            } else {
-                radius
+                MouseScrollUnit::Pixel => {
+                    radius - t.delta_seconds() * speed * smooth_sensitivity * ev.y
+                }
             };
 
             *transform = Transform::from_translation(
