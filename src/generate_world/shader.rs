@@ -122,7 +122,14 @@ pub struct GenerationMaterial {
     #[sampler(12)]
     pub elevation_texture: Option<Handle<Image>>,
 
-    #[uniform(13)]
+    #[texture(13)]
+    #[sampler(14)]
+    pub elevation_other: Option<Handle<Image>>,
+
+    #[uniform(15)]
+    pub interp: f32,
+
+    #[uniform(16)]
     pub quantizer: f32,
 }
 
@@ -156,6 +163,8 @@ impl Default for GenerationMaterial {
             alpha_mode: AlphaMode::Opaque,
             depth_bias: 0.0,
             elevation_texture: None,
+            elevation_other: None,
+            interp: 0.0,
             quantizer: 1000.0,
         }
     }

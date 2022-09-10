@@ -14,7 +14,7 @@ struct FragmentInput {
     #import bevy_pbr::mesh_vertex_output
 };
 
-@group(1) @binding(13)
+@group(1) @binding(16)
 var<uniform> quantizer: f32;
 
 fn quantize_one(in: f32) -> f32 {

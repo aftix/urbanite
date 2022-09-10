@@ -26,6 +26,13 @@ struct Vertex {
 var elevation_map: texture_2d<f32>;
 @group(1) @binding(12)
 var elevation_sampler: sampler;
+@group(1) @binding(13)
+var second_map: texture_2d<f32>;
+@group(1) @binding(14)
+var second_sampler: sampler;
+
+@group(1) @binding(15)
+var<uniform> interp: f32;
 
 
 struct VertexOutput {
@@ -48,7 +55,9 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     let phi = acos(vertex.position.z / r);
     let theta = atan2(vertex.position.y, vertex.position.x);
 
-    let new_r = r + textureSampleLevel(elevation_map, elevation_sampler, vec2(phi / 6.283185, theta / 3.1415926 + 0.5), 0.0).r;
+    let uv = vec2(phi / 6.283185, theta / 3.1415926 + 0.5);
+    let interpolated = (1.0 - interp) * textureSampleLevel(elevation_map, elevation_sampler, uv, 0.0).r + interp * textureSampleLevel(second_map, second_sampler, uv, 0.0).r;
+    let new_r = r + interpolated;
     
     let position = vec3(new_r * sin(phi) * cos(theta), new_r * sin(theta) * sin(phi), new_r * cos(phi));
     out.world_position = mesh_position_local_to_world(model, vec4<f32>(position, 1.0));

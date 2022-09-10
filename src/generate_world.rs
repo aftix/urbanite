@@ -37,6 +37,7 @@ impl Plugin for WorldGenerate {
                     .run_in_state(GameState::WorldGenerate)
                     .with_system(return_on_esc)
                     .with_system(movement)
+                    .with_system(interpolate)
                     .into(),
             )
             .add_exit_system(GameState::WorldGenerate, crate::teardown::<GameTag>)
@@ -51,6 +52,30 @@ fn return_on_esc(mut commands: Commands, keys: Res<Input<KeyCode>>) {
     }
 }
 
+fn interpolate(
+    mut materials: ResMut<Assets<GenerationMaterial>>,
+    q: Query<&Handle<GenerationMaterial>>,
+    mut dir: Local<f32>,
+    t: Res<Time>,
+) {
+    let handle = q.single();
+
+    if *dir == 0.0 {
+        *dir = 1.0;
+    }
+
+    if let Some(mat) = materials.get_mut(handle) {
+        mat.interp += *dir * t.delta().as_secs_f32();
+        if mat.interp > 1.0 {
+            mat.interp = 1.0;
+            *dir = -1.0;
+        } else if mat.interp < 0.0 {
+            mat.interp = 0.0;
+            *dir = 1.0;
+        }
+    }
+}
+
 fn game_startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -61,7 +86,7 @@ fn game_startup(
     // Spawn sphere
     let mut material: GenerationMaterial = Color::rgb(0.4, 0.1, 0.8).into();
     let gen = SimplexGenerator::new(SIZE, 2 * SIZE);
-    material.elevation_texture = Some(gen.get_elevation_map(imgs));
+    material.elevation_other = Some(gen.get_elevation_map(imgs));
 
     commands
         .spawn_bundle(MaterialMeshBundle {
@@ -69,11 +94,13 @@ fn game_startup(
                 radius: 3.0,
                 subdivisions: 32,
             })),
-            material: materials.add(material),
+            material: materials.add(material.clone()),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()
         })
         .insert(GameTag);
+
+    commands.insert_resource(material);
 
     // Spawn light
     commands
