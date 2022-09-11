@@ -2,11 +2,13 @@ use crate::GameState;
 use bevy::{
     input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
     prelude::*,
+    tasks::{AsyncComputeTaskPool, Task},
 };
+use futures_lite::future;
 use iyes_loopless::prelude::*;
 
 use self::{
-    generation::{SimplexGenerator, WorldGenerator},
+    generation::{GenerationTask, SimplexGenerator, WorldGenerator},
     shader::GenerationMaterial,
 };
 
@@ -19,6 +21,13 @@ mod shader;
 // Tag for entities belonging to the game state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct GameTag;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+struct WorldTag;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
+struct InterpTag;
+
+#[derive(Component)]
+struct GenerateTask(Task<Option<Image>>);
 
 // Tag for orbit camera
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
@@ -38,6 +47,7 @@ impl Plugin for WorldGenerate {
                     .with_system(return_on_esc)
                     .with_system(movement)
                     .with_system(interpolate)
+                    .with_system(poll_task)
                     .into(),
             )
             .add_exit_system(GameState::WorldGenerate, crate::teardown::<GameTag>)
@@ -54,24 +64,45 @@ fn return_on_esc(mut commands: Commands, keys: Res<Input<KeyCode>>) {
 
 fn interpolate(
     mut materials: ResMut<Assets<GenerationMaterial>>,
-    q: Query<&Handle<GenerationMaterial>>,
+    q: Query<&Handle<GenerationMaterial>, With<InterpTag>>,
     mut dir: Local<f32>,
     t: Res<Time>,
 ) {
-    let handle = q.single();
-
-    if *dir == 0.0 {
-        *dir = 1.0;
-    }
-
-    if let Some(mat) = materials.get_mut(handle) {
-        mat.interp += *dir * t.delta().as_secs_f32();
-        if mat.interp > 1.0 {
-            mat.interp = 1.0;
-            *dir = -1.0;
-        } else if mat.interp < 0.0 {
-            mat.interp = 0.0;
+    for handle in &q {
+        if *dir == 0.0 {
             *dir = 1.0;
+        }
+
+        if let Some(mat) = materials.get_mut(handle) {
+            mat.interp += *dir * t.delta().as_secs_f32();
+            if mat.interp > 1.0 {
+                mat.interp = 1.0;
+                *dir = -1.0;
+            } else if mat.interp < 0.0 {
+                mat.interp = 0.0;
+                *dir = 1.0;
+            }
+        }
+    }
+}
+
+fn poll_task(
+    mut commands: Commands,
+    mut q: Query<(Entity, &mut GenerateTask)>,
+    mut imgs: ResMut<Assets<Image>>,
+    mut mats: ResMut<Assets<shader::GenerationMaterial>>,
+    m: Query<&Handle<GenerationMaterial>>,
+    world: Query<Entity, With<WorldTag>>,
+) {
+    let genmat = m.single();
+    let world = world.single();
+    for (entity, mut task) in &mut q {
+        if let Some(Some(img)) = future::block_on(future::poll_once(&mut task.0)) {
+            if let Some(mat) = mats.get_mut(genmat) {
+                mat.elevation_other = Some(imgs.add(img));
+            }
+            commands.entity(world).insert(InterpTag);
+            commands.entity(entity).despawn_recursive();
         }
     }
 }
@@ -80,13 +111,14 @@ fn game_startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<shader::GenerationMaterial>>,
-    imgs: ResMut<Assets<Image>>,
     mut q: Query<(Entity, &mut Transform), With<crate::PlayerTag>>,
 ) {
     // Spawn sphere
-    let mut material: GenerationMaterial = Color::rgb(0.4, 0.1, 0.8).into();
+    let material: GenerationMaterial = Color::rgb(0.4, 0.1, 0.8).into();
     let gen = SimplexGenerator::new(SIZE, 2 * SIZE);
-    material.elevation_other = Some(gen.get_elevation_map(imgs));
+
+    let task = AsyncComputeTaskPool::get().spawn(GenerationTask::new(gen));
+    commands.spawn().insert(GenerateTask(task));
 
     commands
         .spawn_bundle(MaterialMeshBundle {
@@ -98,7 +130,8 @@ fn game_startup(
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()
         })
-        .insert(GameTag);
+        .insert(GameTag)
+        .insert(WorldTag);
 
     commands.insert_resource(material);
 
