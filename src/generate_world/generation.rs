@@ -1,7 +1,7 @@
 use std::{
     future::Future,
     pin::Pin,
-    sync::mpsc::channel,
+    sync::{mpsc::channel, Mutex},
     task::{Context, Poll},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -23,6 +23,7 @@ pub(crate) struct GenerationTask<T> {
     generator: T,
     sender: std::sync::mpsc::Sender<Image>,
     receiver: std::sync::mpsc::Receiver<Image>,
+    spawned: Mutex<bool>,
 }
 
 impl<T> GenerationTask<T> {
@@ -32,6 +33,7 @@ impl<T> GenerationTask<T> {
             generator,
             sender: tx,
             receiver: rx,
+            spawned: Mutex::new(false),
         }
     }
 }
@@ -49,14 +51,19 @@ impl<T: WorldGenerator + Send + Clone + 'static> Future for GenerationTask<T> {
             return Poll::Ready(None);
         }
 
-        let tx = self.sender.clone();
-        let waker = ctx.waker().clone();
-        let gen = self.generator.clone();
-        std::thread::spawn(move || {
-            tx.send(gen.get_elevation_map())
-                .expect("Failed to send elevation map");
-            waker.wake();
-        });
+        let mut spawned = self.spawned.lock().expect("Lock failed");
+
+        if !*spawned {
+            let tx = self.sender.clone();
+            let waker = ctx.waker().clone();
+            let gen = self.generator.clone();
+            std::thread::spawn(move || {
+                tx.send(gen.get_elevation_map())
+                    .expect("Failed to send elevation map");
+                waker.wake();
+            });
+            *spawned = true;
+        }
 
         Poll::Pending
     }
