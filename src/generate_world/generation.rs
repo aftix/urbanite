@@ -1,4 +1,10 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::mpsc::channel,
+    task::{Context, Poll},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use bevy::{
     prelude::*,
@@ -10,7 +16,50 @@ const SCALE: f32 = 0.8;
 
 pub(super) trait WorldGenerator {
     fn new(width: u32, height: u32) -> Self;
-    fn get_elevation_map(&self, imgs: ResMut<Assets<Image>>) -> Handle<Image>;
+    fn get_elevation_map(&self) -> Image;
+}
+
+pub(crate) struct GenerationTask<T> {
+    generator: T,
+    sender: std::sync::mpsc::Sender<Image>,
+    receiver: std::sync::mpsc::Receiver<Image>,
+}
+
+impl<T> GenerationTask<T> {
+    pub fn new(generator: T) -> Self {
+        let (tx, rx) = channel();
+        Self {
+            generator,
+            sender: tx,
+            receiver: rx,
+        }
+    }
+}
+
+impl<T: WorldGenerator + Send + Clone + 'static> Future for GenerationTask<T> {
+    type Output = Option<Image>;
+
+    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Self::Output> {
+        let res = self.receiver.try_recv();
+        if let Ok(img) = res {
+            return Poll::Ready(Some(img));
+        }
+
+        if let Err(std::sync::mpsc::TryRecvError::Disconnected) = res {
+            return Poll::Ready(None);
+        }
+
+        let tx = self.sender.clone();
+        let waker = ctx.waker().clone();
+        let gen = self.generator.clone();
+        std::thread::spawn(move || {
+            tx.send(gen.get_elevation_map())
+                .expect("Failed to send elevation map");
+            waker.wake();
+        });
+
+        Poll::Pending
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -93,10 +142,10 @@ impl WorldGenerator for SimplexGenerator {
         }
     }
 
-    fn get_elevation_map(&self, mut images: ResMut<Assets<Image>>) -> Handle<Image> {
+    fn get_elevation_map(&self) -> Image {
         let img = self.get_map();
         let img = Self::get_bytes(&img[..]);
-        let img = Image::new(
+        Image::new(
             Extent3d {
                 width: self.width,
                 height: self.height,
@@ -105,8 +154,6 @@ impl WorldGenerator for SimplexGenerator {
             TextureDimension::D2,
             img,
             TextureFormat::R32Float,
-        );
-
-        images.add(img)
+        )
     }
 }

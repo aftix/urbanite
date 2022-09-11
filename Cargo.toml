@@ -10,6 +10,7 @@ bevy = "0.8.1"
 iyes_loopless = { git = "https://github.com/iyesgames/iyes_loopless" }
 heron = { git = "https://github.com/jcornaz/heron", features = ["3d"] }
 noise = "0.7.0"
+futures-lite = "1.12"
 
 [profile.dev]
 opt-level = 1
