@@ -52,8 +52,13 @@ impl Plugin for WorldGenerate {
             )
             .add_exit_system(GameState::WorldGenerate, crate::teardown::<GameTag>)
             .add_exit_system(GameState::WorldGenerate, release_cursor)
+            .add_exit_system(GameState::WorldGenerate, remove_ambient)
             .add_exit_system(GameState::WorldGenerate, remove_orbit);
     }
+}
+
+fn remove_ambient(mut commands: Commands) {
+    commands.insert_resource(AmbientLight { ..default() });
 }
 
 fn return_on_esc(mut commands: Commands, keys: Res<Input<KeyCode>>) {
@@ -147,10 +152,17 @@ fn game_startup(
             ..default()
         })
         .insert(GameTag);
+
+    commands.insert_resource(AmbientLight {
+        brightness: 10.0,
+        ..default()
+    });
+
     commands
         .spawn_bundle(DirectionalLightBundle {
             directional_light: DirectionalLight {
                 shadows_enabled: true,
+                illuminance: 1000.0,
                 ..default()
             },
             transform: Transform::from_xyz(4.0, 8.9, 4.9).looking_at(Vec3::ZERO, Vec3::Z),
