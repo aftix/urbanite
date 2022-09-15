@@ -245,3 +245,37 @@ fn remove_orbit(mut commands: Commands, q: Query<Entity, With<Orbit>>) {
         commands.entity(entity).remove::<Orbit>();
     }
 }
+
+#[cfg(test)]
+mod test {
+    use bevy::{asset::AssetPlugin, prelude::*};
+
+    #[test]
+    fn does_setup_add_camera() {
+        use super::game_startup;
+        use crate::generate_world::shader::GenerationMaterial;
+        use crate::PlayerTag;
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugin(AssetPlugin)
+            .add_asset::<Mesh>()
+            .add_asset::<GenerationMaterial>();
+        app.world
+            .spawn()
+            .insert_bundle(Camera3dBundle::default())
+            .insert(PlayerTag);
+        app.add_startup_system(game_startup);
+
+        app.update();
+
+        //let q: Query<Entity, With<Camera3d>> = app.world.query_filtered();
+        let q: Vec<_> = app
+            .world
+            .query_filtered::<Entity, With<Camera3d>>()
+            .iter(&app.world)
+            .collect();
+
+        assert_eq!(q.len(), 1);
+    }
+}
