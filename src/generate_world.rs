@@ -245,3 +245,129 @@ fn remove_orbit(mut commands: Commands, q: Query<Entity, With<Orbit>>) {
         commands.entity(entity).remove::<Orbit>();
     }
 }
+
+#[cfg(test)]
+mod test {
+    use bevy::prelude::*;
+
+    fn generate_app() -> App {
+        use super::GenerationMaterial;
+        use crate::PlayerTag;
+        use bevy::asset::AssetPlugin;
+
+        let mut app = App::new();
+
+        app.add_plugins(MinimalPlugins).add_plugin(AssetPlugin);
+        app.add_asset::<Mesh>().add_asset::<GenerationMaterial>();
+        app.world
+            .spawn()
+            .insert_bundle(Camera3dBundle::default())
+            .insert(PlayerTag);
+
+        app
+    }
+
+    #[test]
+    fn setup_adds_orbit_to_player() {
+        use super::{game_startup, Orbit};
+        use crate::PlayerTag;
+
+        let mut app = generate_app();
+        app.add_startup_system(game_startup);
+
+        app.update();
+
+        //let q: Query<Entity, With<Camera3d>> = app.world.query_filtered();
+        let q: Vec<_> = app
+            .world
+            .query_filtered::<Entity, (With<Orbit>, With<PlayerTag>)>()
+            .iter(&app.world)
+            .collect();
+
+        assert_eq!(q.len(), 1);
+    }
+
+    #[test]
+    fn setup_adds_point_light() {
+        use super::game_startup;
+
+        let mut app = generate_app();
+        app.add_startup_system(game_startup);
+
+        app.update();
+
+        let q: Vec<_> = app
+            .world
+            .query_filtered::<Entity, With<PointLight>>()
+            .iter(&app.world)
+            .collect();
+        assert_eq!(q.len(), 1);
+    }
+
+    #[test]
+    fn setup_adds_mesh_and_material() {
+        use super::{game_startup, GenerationMaterial};
+
+        let mut app = generate_app();
+        app.add_startup_system(game_startup);
+
+        app.update();
+
+        let mesh: Vec<_> = app
+            .world
+            .query::<&Handle<Mesh>>()
+            .iter(&app.world)
+            .collect();
+
+        assert_eq!(mesh.len(), 1);
+        drop(mesh);
+
+        let material: Vec<_> = app
+            .world
+            .query::<&Handle<GenerationMaterial>>()
+            .iter(&app.world)
+            .collect();
+
+        assert_eq!(material.len(), 1);
+        drop(material);
+    }
+
+    #[test]
+    fn setup_adds_ambient_light() {
+        use super::game_startup;
+
+        let mut app = generate_app();
+        app.add_startup_system(game_startup);
+
+        app.update();
+
+        let light = app.world.get_resource::<AmbientLight>();
+        assert!(light.is_some());
+        let light = light.unwrap();
+        assert_eq!(light.color, Color::WHITE);
+        assert!(light.brightness > 1.0);
+    }
+
+    #[test]
+    fn setup_starts_task() {
+        use super::{game_startup, GenerateTask};
+
+        let mut app = generate_app();
+        app.add_startup_system(game_startup);
+
+        app.update();
+
+        let mut task: Vec<_> = app
+            .world
+            .query::<&mut GenerateTask>()
+            .iter_mut(&mut app.world)
+            .collect();
+
+        assert_eq!(task.len(), 1);
+
+        let result = futures_lite::future::block_on(&mut task[0].0);
+        assert!(result.is_some());
+    }
+
+    // TODO: Test orbit controls
+}

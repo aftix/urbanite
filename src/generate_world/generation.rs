@@ -164,3 +164,42 @@ impl WorldGenerator for SimplexGenerator {
         )
     }
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn is_simplexgenerator_sized() {
+        use super::{SimplexGenerator, WorldGenerator};
+
+        let gen = SimplexGenerator::new(500, 500);
+        let map = gen.get_map();
+        assert_eq!(map.len(), 500 * 500);
+
+        let gen = SimplexGenerator::new(200, 150);
+        let map = gen.get_map();
+        assert_eq!(map.len(), 200 * 150);
+    }
+
+    #[test]
+    fn is_simplexgenerator_clamped() {
+        use super::{SimplexGenerator, WorldGenerator, SCALE};
+
+        let gen = SimplexGenerator::new(200, 150);
+        let map = gen.get_map();
+
+        for f in map {
+            assert!(f <= SCALE);
+            assert!(f >= -SCALE);
+        }
+    }
+
+    #[test]
+    fn is_simplexgenerator_worldgenerator() {
+        use super::{SimplexGenerator, WorldGenerator};
+        use bevy::prelude::*;
+
+        let gen = SimplexGenerator::new(500, 500);
+        let img = gen.get_elevation_map();
+        assert_eq!(img.size(), Vec2::new(500., 500.));
+    }
+}
