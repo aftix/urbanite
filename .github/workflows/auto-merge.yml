@@ -1,7 +1,7 @@
 name: Auto-Merge
 on:
   pull_request_target:
-    types: [labeled]
+    types: [labeled, opened]
 
 jobs:
   enable-auto-merge-on-label:
@@ -20,5 +20,5 @@ jobs:
     if: (github.event.pull_request.user.login == 'dependabot[bot]' || github.event.pull_request.user.login == 'aftix') && github.event.pull_request.head.repo.id == github.event.repository.id
     steps:
       - uses: alexwilson/enable-github-automerge-action@main
-      with:
-        github-token: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
