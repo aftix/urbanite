@@ -8,7 +8,11 @@ on:
 jobs:
   compile:
     name: Compile
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        profile: [dev, release]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -18,42 +22,25 @@ jobs:
           toolchain: nightly
           override: true
           profile: minimal
-      
+
       - uses: Swatinem/rust-cache@v1
 
       - run: sudo apt-get update
+        if: ${{ matrix.os }} == 'ubuntu-latest'
       - run: sudo apt-get install -y libasound2-dev libudev-dev
+        if: ${{ matrix.os }} == 'ubuntu-latest'
 
       - name: Compile
         uses: actions-rs/cargo@v1
         with:
           command: build
+          args: --profile ${{ matrix.profile }}
 
-  compile-release:
-    name: Compile Release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-          profile: minimal
-      
-      - uses: Swatinem/rust-cache@v1
-
-      - run: sudo apt-get update
-      - run: sudo apt-get install -y libasound2-dev libudev-dev
-
-      - name: Compile
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
   clippy:
     name: Clippy
+    strategy:
+      matrix:
+        profile: [dev, release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -65,38 +52,51 @@ jobs:
           override: true
           profile: minimal
           components: clippy
-      
+
       - uses: Swatinem/rust-cache@v1
 
       - run: sudo apt-get update
-      - run: sudo apt-get install -y libasound2-dev libudev-dev 
-      
-      - name: Run Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets --all-features -- --deny=warnings
-  clippy-release:
-    name: Clippy Release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-          profile: minimal
-          components: clippy
-      
-      - uses: Swatinem/rust-cache@v1
-
-      - run: sudo apt-get update
+        if: ${{ matrix.os }} == 'ubuntu-latest'
       - run: sudo apt-get install -y libasound2-dev libudev-dev
-      
+        if: ${{ matrix.os }} == 'ubuntu-latest'
+
       - name: Run Clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --release --all-targets --all-features -- --deny=warnings
+          args: --profile ${{ matrix.profile }} --all-targets --all-features -- --deny=warnings
+
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          profile: minimal
+
+      - uses: Swatinem/rust-cache@v1
+
+      - run: sudo apt-get update
+        if: ${{ matrix.os }} == 'ubuntu-latest'
+      - run: sudo apt-get install -y libasound2-dev libudev-dev
+        if: ${{ matrix.os }} == 'ubuntu-latest'
+
+      - name: Install cargo-nextest
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-nextest
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: nextest
+          args: run
