@@ -86,6 +86,17 @@ impl PartialEq<SimplexGenerator> for SimplexGenerator {
 
 impl Eq for SimplexGenerator {}
 
+fn angles_to_longtude_lattitude(phi: f32, theta: f32) -> (f32, f32) {
+    (
+        phi / std::f32::consts::TAU * 360.0 - 180.0,
+        180.0 * (0.5 - theta / std::f32::consts::PI),
+    )
+}
+
+fn galls_peters(longitude: f32, lattitude: f32) -> (f32, f32) {
+    (longitude / 360.0 + 0.5, lattitude.sin() / 2.0 + 0.5)
+}
+
 impl SimplexGenerator {
     fn get_map(&self) -> Vec<f32> {
         let mut image = Vec::with_capacity((self.width * self.height) as usize);
@@ -95,25 +106,20 @@ impl SimplexGenerator {
             for j in 0..self.height {
                 let j = j as f32 / self.height as f32 * 4.0;
 
-                let theta = (i - 0.5) * std::f32::consts::PI;
-                let phi = j * std::f32::consts::TAU;
+                let phi = i * std::f32::consts::TAU;
+                let theta = j * std::f32::consts::PI;
 
-                let x = super::RADIUS * theta.cos() * phi.sin();
-                let y = super::RADIUS * theta.sin() * phi.sin();
-                let z = super::RADIUS * phi.cos();
+                let (longitude, lattitude) = angles_to_longtude_lattitude(phi, theta);
+
+                let (x, y) = galls_peters(longitude, lattitude);
 
                 let mut acc = 0.0;
                 let mut min_acc = 0.0;
 
                 for harmonic in 0..8 {
                     let weight = 1. - harmonic as f32 / 8.;
-                    let proj = (
-                        x / (harmonic + 1) as f32,
-                        y / (harmonic + 1) as f32,
-                        z / (harmonic + 1) as f32,
-                    );
-                    acc +=
-                        self.gen.get([proj.0 as f64, proj.1 as f64, proj.2 as f64]) as f32 * weight;
+                    let proj = (x / (harmonic + 1) as f32, y / (harmonic + 1) as f32);
+                    acc += self.gen.get([proj.0 as f64, proj.1 as f64]) as f32 * weight;
                     min_acc -= weight;
                 }
 
