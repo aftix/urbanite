@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.8.1"
-iyes_loopless = { git = "https://github.com/iyesgames/iyes_loopless" }
+iyes_loopless = "0.8"
 heron = { git = "https://github.com/jcornaz/heron", features = ["3d"] }
 noise = "0.7.0"
 futures-lite = "1.12"

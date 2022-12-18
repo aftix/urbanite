@@ -278,13 +278,13 @@ mod test {
         app.update();
 
         //let q: Query<Entity, With<Camera3d>> = app.world.query_filtered();
-        let q: Vec<_> = app
-            .world
-            .query_filtered::<Entity, (With<Orbit>, With<PlayerTag>)>()
-            .iter(&app.world)
-            .collect();
-
-        assert_eq!(q.len(), 1);
+        assert_eq!(
+            app.world
+                .query_filtered::<Entity, (With<Orbit>, With<PlayerTag>)>()
+                .iter(&app.world)
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -296,12 +296,13 @@ mod test {
 
         app.update();
 
-        let q: Vec<_> = app
-            .world
-            .query_filtered::<Entity, With<PointLight>>()
-            .iter(&app.world)
-            .collect();
-        assert_eq!(q.len(), 1);
+        assert_eq!(
+            app.world
+                .query_filtered::<Entity, With<PointLight>>()
+                .iter(&app.world)
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -313,23 +314,18 @@ mod test {
 
         app.update();
 
-        let mesh: Vec<_> = app
-            .world
-            .query::<&Handle<Mesh>>()
-            .iter(&app.world)
-            .collect();
+        assert_eq!(
+            app.world.query::<&Handle<Mesh>>().iter(&app.world).count(),
+            1
+        );
 
-        assert_eq!(mesh.len(), 1);
-        drop(mesh);
-
-        let material: Vec<_> = app
-            .world
-            .query::<&Handle<GenerationMaterial>>()
-            .iter(&app.world)
-            .collect();
-
-        assert_eq!(material.len(), 1);
-        drop(material);
+        assert_eq!(
+            app.world
+                .query::<&Handle<GenerationMaterial>>()
+                .iter(&app.world)
+                .count(),
+            1
+        );
     }
 
     #[test]
