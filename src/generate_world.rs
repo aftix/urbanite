@@ -3,16 +3,15 @@ use bevy::{
     input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel},
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task},
+    window::CursorGrabMode,
 };
 use futures_lite::future;
-use iyes_loopless::prelude::*;
 
 use self::{
     generation::{GenerationTask, SimplexGenerator, WorldGenerator},
     shader::GenerationMaterial,
 };
 
-const RADIUS: f32 = 3.0;
 const SIZE: u32 = 6000;
 
 mod generation;
@@ -38,22 +37,25 @@ pub(crate) struct WorldGenerate;
 
 impl Plugin for WorldGenerate {
     fn build(&self, app: &mut App) {
-        app.add_plugin(MaterialPlugin::<shader::GenerationMaterial>::default())
-            .add_enter_system(GameState::WorldGenerate, game_startup)
-            .add_enter_system(GameState::WorldGenerate, grab_cursor)
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::WorldGenerate)
-                    .with_system(return_on_esc)
-                    .with_system(movement)
-                    .with_system(interpolate)
-                    .with_system(poll_task)
-                    .into(),
+        app.add_plugins(MaterialPlugin::<shader::GenerationMaterial>::default())
+            .add_systems(
+                OnEnter(GameState::WorldGenerate),
+                (game_startup, grab_cursor),
             )
-            .add_exit_system(GameState::WorldGenerate, crate::teardown::<GameTag>)
-            .add_exit_system(GameState::WorldGenerate, release_cursor)
-            .add_exit_system(GameState::WorldGenerate, remove_ambient)
-            .add_exit_system(GameState::WorldGenerate, remove_orbit);
+            .add_systems(
+                OnExit(GameState::WorldGenerate),
+                (
+                    release_cursor,
+                    remove_ambient,
+                    remove_orbit,
+                    crate::teardown::<GameTag>,
+                ),
+            )
+            .add_systems(
+                Update,
+                (return_on_esc, movement, interpolate, poll_task)
+                    .run_if(in_state(GameState::WorldGenerate)),
+            );
     }
 }
 
@@ -63,7 +65,7 @@ fn remove_ambient(mut commands: Commands) {
 
 fn return_on_esc(mut commands: Commands, keys: Res<Input<KeyCode>>) {
     if keys.just_pressed(KeyCode::Escape) {
-        commands.insert_resource(NextState(GameState::MainMenu));
+        commands.insert_resource(NextState(Some(GameState::MainMenu)));
     }
 }
 
@@ -123,14 +125,17 @@ fn game_startup(
     let gen = SimplexGenerator::new(SIZE, 2 * SIZE);
 
     let task = AsyncComputeTaskPool::get().spawn(GenerationTask::new(gen));
-    commands.spawn().insert(GenerateTask(task));
+    commands.spawn_empty().insert(GenerateTask(task));
 
     commands
-        .spawn_bundle(MaterialMeshBundle {
-            mesh: meshes.add(Mesh::from(shape::Icosphere {
-                radius: 3.0,
-                subdivisions: 32,
-            })),
+        .spawn(MaterialMeshBundle {
+            mesh: meshes.add(
+                Mesh::try_from(shape::Icosphere {
+                    radius: 3.0,
+                    subdivisions: 32,
+                })
+                .expect("Could not load mesh from icosphere"),
+            ),
             material: materials.add(material.clone()),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()
@@ -142,7 +147,7 @@ fn game_startup(
 
     // Spawn light
     commands
-        .spawn_bundle(PointLightBundle {
+        .spawn(PointLightBundle {
             point_light: PointLight {
                 intensity: 1500.0,
                 shadows_enabled: true,
@@ -159,7 +164,7 @@ fn game_startup(
     });
 
     commands
-        .spawn_bundle(DirectionalLightBundle {
+        .spawn(DirectionalLightBundle {
             directional_light: DirectionalLight {
                 shadows_enabled: true,
                 illuminance: 1000.0,
@@ -177,18 +182,16 @@ fn game_startup(
     *player_transform = Transform::from_xyz(10.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Z);
 }
 
-fn grab_cursor(mut windows: ResMut<Windows>) {
-    let window = windows.get_primary_mut().expect("No primary window");
-
-    window.set_cursor_lock_mode(true);
-    window.set_cursor_visibility(false);
+fn grab_cursor(mut q: Query<&mut Window>) {
+    let mut window = q.iter_mut().next().expect("No primary window");
+    window.cursor.grab_mode = CursorGrabMode::Locked;
+    window.cursor.visible = false;
 }
 
-fn release_cursor(mut windows: ResMut<Windows>) {
-    let window = windows.get_primary_mut().expect("No primary window");
-
-    window.set_cursor_lock_mode(false);
-    window.set_cursor_visibility(true);
+fn release_cursor(mut q: Query<&mut Window>) {
+    let mut window = q.iter_mut().next().expect("No primary window");
+    window.cursor.grab_mode = CursorGrabMode::None;
+    window.cursor.visible = true;
 }
 
 // Orbit around the origin, keeping looking at the center, at constant radius
@@ -253,16 +256,13 @@ mod test {
     fn generate_app() -> App {
         use super::GenerationMaterial;
         use crate::PlayerTag;
-        use bevy::asset::AssetPlugin;
 
         let mut app = App::new();
 
-        app.add_plugins(MinimalPlugins).add_plugin(AssetPlugin);
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(AssetPlugin::default());
         app.add_asset::<Mesh>().add_asset::<GenerationMaterial>();
-        app.world
-            .spawn()
-            .insert_bundle(Camera3dBundle::default())
-            .insert(PlayerTag);
+        app.world.spawn(Camera3dBundle::default()).insert(PlayerTag);
 
         app
     }
@@ -273,7 +273,7 @@ mod test {
         use crate::PlayerTag;
 
         let mut app = generate_app();
-        app.add_startup_system(game_startup);
+        app.add_systems(Startup, game_startup);
 
         app.update();
 
@@ -292,7 +292,7 @@ mod test {
         use super::game_startup;
 
         let mut app = generate_app();
-        app.add_startup_system(game_startup);
+        app.add_systems(Startup, game_startup);
 
         app.update();
 
@@ -310,7 +310,7 @@ mod test {
         use super::{game_startup, GenerationMaterial};
 
         let mut app = generate_app();
-        app.add_startup_system(game_startup);
+        app.add_systems(Startup, game_startup);
 
         app.update();
 
@@ -333,7 +333,7 @@ mod test {
         use super::game_startup;
 
         let mut app = generate_app();
-        app.add_startup_system(game_startup);
+        app.add_systems(Startup, game_startup);
 
         app.update();
 
@@ -349,7 +349,7 @@ mod test {
         use super::{game_startup, GenerateTask};
 
         let mut app = generate_app();
-        app.add_startup_system(game_startup);
+        app.add_systems(Startup, game_startup);
 
         app.update();
 

@@ -146,7 +146,7 @@ impl WorldGenerator for SimplexGenerator {
         SimplexGenerator {
             width,
             height,
-            gen: OpenSimplex::new().set_seed(
+            gen: OpenSimplex::new(
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .expect("Time moved backwards")

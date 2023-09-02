@@ -1,6 +1,5 @@
 use crate::{GameState, UiRoot};
 use bevy::{app::AppExit, prelude::*};
-use iyes_loopless::prelude::*;
 
 // Marker component for MainMenu UI items
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
@@ -18,7 +17,7 @@ struct Cube;
 struct Next(Entity);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component)]
 struct Previous(Entity);
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Event)]
 struct ChangeEvent(Entity);
 
 // Enable a menu entity to quit
@@ -34,21 +33,22 @@ pub(crate) struct MainMenu;
 
 impl Plugin for MainMenu {
     fn build(&self, app: &mut App) {
-        app.add_enter_system(GameState::MainMenu, menu_startup)
+        app.add_systems(OnEnter(GameState::MainMenu), menu_startup)
+            .add_systems(OnExit(GameState::MainMenu), crate::teardown::<MainMenuTag>)
             .add_event::<ChangeEvent>()
-            .add_system_set(
-                ConditionSet::new()
-                    .run_in_state(GameState::MainMenu)
-                    .with_system(bevy::window::close_on_esc)
-                    .with_system(change_color)
-                    .with_system(change_color_removed)
-                    .with_system(move_selection)
-                    .with_system(selection_quit)
-                    .with_system(selection_play)
-                    .with_system(rotate_cube)
-                    .into(),
-            )
-            .add_exit_system(GameState::MainMenu, crate::teardown::<MainMenuTag>);
+            .add_systems(
+                Update,
+                (
+                    bevy::window::close_on_esc,
+                    change_color,
+                    change_color_removed,
+                    move_selection,
+                    selection_quit,
+                    selection_play,
+                    rotate_cube,
+                )
+                    .run_if(in_state(GameState::MainMenu)),
+            );
     }
 }
 
@@ -91,7 +91,7 @@ fn selection_play(
 ) {
     q.for_each(move |_| {
         if keys.just_pressed(KeyCode::Return) {
-            commands.insert_resource(NextState(GameState::WorldGenerate));
+            commands.insert_resource(NextState(Some(GameState::WorldGenerate)));
         }
     });
 }
@@ -137,7 +137,7 @@ fn menu_startup(
     *transform = Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Z);
 
     commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 2.0 })),
             material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
@@ -147,7 +147,7 @@ fn menu_startup(
         .insert(Cube);
 
     commands
-        .spawn_bundle(PointLightBundle {
+        .spawn(PointLightBundle {
             point_light: PointLight {
                 intensity: 1500.0,
                 shadows_enabled: true,
@@ -159,7 +159,7 @@ fn menu_startup(
         .insert(MainMenuTag);
     let (uiroot, _) = q.single();
     let text = commands
-        .spawn_bundle(
+        .spawn(
             TextBundle::from_section(
                 "Urbanite",
                 TextStyle {
@@ -168,15 +168,12 @@ fn menu_startup(
                     font_size: 100.0,
                 },
             )
-            .with_text_alignment(TextAlignment::TOP_CENTER)
+            .with_text_alignment(TextAlignment::Center)
             .with_style(Style {
                 position_type: PositionType::Absolute,
                 align_self: AlignSelf::FlexEnd,
-                position: UiRect {
-                    bottom: Val::Px(5.0),
-                    right: Val::Px(30.0),
-                    ..default()
-                },
+                bottom: Val::Px(5.0),
+                right: Val::Px(30.0),
                 ..default()
             }),
         )
@@ -184,7 +181,7 @@ fn menu_startup(
         .id();
 
     let start = commands
-        .spawn_bundle(
+        .spawn(
             TextBundle::from_section(
                 "Generate World",
                 TextStyle {
@@ -193,15 +190,12 @@ fn menu_startup(
                     font_size: 24.0,
                 },
             )
-            .with_text_alignment(TextAlignment::TOP_CENTER)
+            .with_text_alignment(TextAlignment::Center)
             .with_style(Style {
                 position_type: PositionType::Absolute,
                 align_self: AlignSelf::FlexEnd,
-                position: UiRect {
-                    top: Val::Px(5.0),
-                    left: Val::Px(30.0),
-                    ..default()
-                },
+                top: Val::Px(5.0),
+                left: Val::Px(30.0),
                 ..default()
             }),
         )
@@ -211,7 +205,7 @@ fn menu_startup(
         .id();
 
     let quit = commands
-        .spawn_bundle(
+        .spawn(
             TextBundle::from_section(
                 "Quit",
                 TextStyle {
@@ -220,15 +214,12 @@ fn menu_startup(
                     font_size: 24.0,
                 },
             )
-            .with_text_alignment(TextAlignment::TOP_CENTER)
+            .with_text_alignment(TextAlignment::Center)
             .with_style(Style {
                 position_type: PositionType::Absolute,
                 align_self: AlignSelf::FlexEnd,
-                position: UiRect {
-                    top: Val::Px(35.0),
-                    left: Val::Px(30.0),
-                    ..default()
-                },
+                top: Val::Px(35.0),
+                left: Val::Px(30.0),
                 ..default()
             }),
         )

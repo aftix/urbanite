@@ -1,7 +1,7 @@
 use bevy::{
     pbr::{MaterialPipeline, MaterialPipelineKey, StandardMaterialFlags, StandardMaterialUniform},
     prelude::*,
-    reflect::TypeUuid,
+    reflect::{TypePath, TypeUuid},
     render::{
         color::Color, mesh::MeshVertexBufferLayout, render_asset::RenderAssets, render_resource::*,
     },
@@ -14,7 +14,7 @@ pub struct GenerationMaterialKey {
 }
 
 /// Copied mostly from bevy_pbr::StandardMaterial
-#[derive(AsBindGroup, Debug, Clone, PartialEq, TypeUuid)]
+#[derive(AsBindGroup, Debug, Clone, PartialEq, TypeUuid, TypePath, Resource)]
 #[uuid = "c66025a1-b268-4567-86d9-1f68e422576a"]
 #[bind_group_data(GenerationMaterialKey)]
 #[uniform(0, StandardMaterialUniform)]
@@ -218,6 +218,9 @@ impl AsBindGroupShaderType<StandardMaterialUniform> for GenerationMaterial {
                 flags |= StandardMaterialFlags::ALPHA_MODE_MASK;
             }
             AlphaMode::Blend => flags |= StandardMaterialFlags::ALPHA_MODE_BLEND,
+            AlphaMode::Premultiplied => flags |= StandardMaterialFlags::ALPHA_MODE_PREMULTIPLIED,
+            AlphaMode::Add => flags |= StandardMaterialFlags::ALPHA_MODE_ADD,
+            AlphaMode::Multiply => flags |= StandardMaterialFlags::ALPHA_MODE_MULTIPLY,
         };
 
         StandardMaterialUniform {
@@ -228,6 +231,7 @@ impl AsBindGroupShaderType<StandardMaterialUniform> for GenerationMaterial {
             reflectance: self.reflectance,
             flags: flags.bits(),
             alpha_cutoff,
+            ..Default::default()
         }
     }
 }
@@ -254,7 +258,7 @@ impl Material for GenerationMaterial {
                 .as_mut()
                 .unwrap()
                 .shader_defs
-                .push(String::from("STANDARDMATERIAL_NORMAL_MAP"));
+                .push(String::from("STANDARDMATERIAL_NORMAL_MAP").into());
         }
         descriptor.primitive.cull_mode = key.bind_group_data.cull_mode;
         if let Some(label) = &mut descriptor.label {
